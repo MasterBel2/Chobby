@@ -27,35 +27,6 @@ function BattleListWindow:init(parent)
 		}
 	end
 
-	local function SoftUpdate()
-		self:UpdateFilters()
-		self:UpdateInfoPanel()
-	end
-
-	local function update()
-		self:Update()
-	end
-
-	self.infoPanel = Panel:New {
-		classname = "overlay_window",
-		x = "15%",
-		y = "45%",
-		right = "15%",
-		bottom = "45%",
-		parent = self.window,
-	}
-	self.infoLabel = Label:New {
-		x = "5%",
-		y = "5%",
-		width = "90%",
-		height = "90%",
-		align = "center",
-		valign = "center",
-		parent = self.infoPanel,
-		font = Configuration:GetFont(3),
-	}
-	self.infoPanel:SetVisibility(false)
-
 	Label:New {
 		x = 20,
 		right = 5,
@@ -79,7 +50,7 @@ function BattleListWindow:init(parent)
 		OnChange = {
 			function (obj, newState)
 				Configuration:SetConfigValue("battleFilterPassworded2", newState)
-				SoftUpdate()
+				self:UpdatePresentation()
 			end
 		},
 		parent = self.window,
@@ -97,7 +68,7 @@ function BattleListWindow:init(parent)
 		OnChange = {
 			function (obj, newState)
 				Configuration:SetConfigValue("battleFilterNonFriend", newState)
-				SoftUpdate()
+				self:UpdatePresentation()
 			end
 		},
 		parent = self.window,
@@ -115,7 +86,7 @@ function BattleListWindow:init(parent)
 		OnChange = {
 			function (obj, newState)
 				Configuration:SetConfigValue("battleFilterRunning", newState)
-				SoftUpdate()
+				self:UpdatePresentation()
 			end
 		},
 		parent = self.window,
@@ -145,7 +116,7 @@ function BattleListWindow:init(parent)
 			return
 		end
 		self:AddBattle(battleID, lobby:GetBattle(battleID))
-		SoftUpdate()
+		self:UpdatePresentation()
 	end
 	lobby:AddListener("OnBattleOpened", self.onBattleOpened)
 
@@ -154,7 +125,7 @@ function BattleListWindow:init(parent)
 			return
 		end
 		self:RemoveRow(battleID)
-		SoftUpdate()
+		self:UpdatePresentation()
 	end
 	lobby:AddListener("OnBattleClosed", self.onBattleClosed)
 
@@ -163,7 +134,7 @@ function BattleListWindow:init(parent)
 			return
 		end
 		self:JoinedBattle(battleID)
-		SoftUpdate()
+		self:UpdatePresentation()
 	end
 	lobby:AddListener("OnJoinedBattle", self.onJoinedBattle)
 
@@ -172,7 +143,7 @@ function BattleListWindow:init(parent)
 			return
 		end
 		self:LeftBattle(battleID)
-		SoftUpdate()
+		self:UpdatePresentation()
 	end
 	lobby:AddListener("OnLeftBattle", self.onLeftBattle)
 
@@ -181,7 +152,7 @@ function BattleListWindow:init(parent)
 			return
 		end
 		self:OnUpdateBattleInfo(battleID)
-		SoftUpdate()
+		self:UpdatePresentation()
 	end
 	lobby:AddListener("OnUpdateBattleInfo", self.onUpdateBattleInfo)
 
@@ -190,13 +161,13 @@ function BattleListWindow:init(parent)
 			return
 		end
 		self:OnBattleIngameUpdate(battleID, isRunning)
-		SoftUpdate()
+		self:UpdatePresentation()
 	end
 	lobby:AddListener("OnBattleIngameUpdate", self.onBattleIngameUpdate)
 
 	local function onConfigurationChange(listener, key, value)
 		if key == "displayBadEngines2" then
-			update()
+			self:FullUpdate()
 		end
 	end
 	Configuration:AddListener("OnConfigurationChange", onConfigurationChange)
@@ -208,7 +179,10 @@ function BattleListWindow:init(parent)
 	end
 	WG.DownloadHandler.AddListener("DownloadFinished", downloadFinished)
 
-	update()
+	self.noItemsInFilterText = "All games are filtered out!"
+	self.noItemsToShowText = "No battles with compatible engine versions."
+
+	self:FullUpdate()
 end
 
 function BattleListWindow:RemoveListeners()
@@ -222,9 +196,7 @@ function BattleListWindow:RemoveListeners()
 	lobby:RemoveListener("DownloadFinished", self.downloadFinished)
 end
 
-function BattleListWindow:Update()
-	self:Clear()
-
+function BattleListWindow:UpdateData()
 	local battles = lobby:GetBattles()
 	local tmp = {}
 	for _, battle in pairs(battles) do
@@ -235,40 +207,19 @@ function BattleListWindow:Update()
 	for _, battle in pairs(battles) do
 		self:AddBattle(battle.battleID, battle)
 	end
-	self:UpdateFilters()
-	self:UpdateInfoPanel()
 end
 
 function BattleListWindow:UpdateInfoPanel()
 	local battles = lobby:GetBattles()
-	local noBattles = true
+	local hasBattles = false
 	for _, battle in pairs(battles) do
-		noBattles = false
+		hasBattles = true
 	end
-	if noBattles then
-		self.infoPanel:SetVisibility(true)
-		self.infoPanel:BringToFront()
-		self.infoLabel:SetCaption("No games, check your connection.")
-		return
-	end
-
-	local firstPanel = self.orderPanelMapping[1]
-	if firstPanel then
-		if not firstPanel.inFilter then
-			self.infoPanel:SetVisibility(true)
-			self.infoPanel:BringToFront()
-			self.infoLabel:SetCaption("No games in filter")
-			return
-		end
+	if hasBattles then
+		self:super("UpdateInfoPanel")
 	else
-		-- Must have hidden games
-		self.infoPanel:SetVisibility(true)
-		self.infoPanel:BringToFront()
-		self.infoLabel:SetCaption("Games are hidden, unsure why.")
-		return
+		self:ShowInfoPanel("No games, check your connection.")
 	end
-
-	self.infoPanel:SetVisibility(false)
 end
 
 function BattleListWindow:MakeWatchBattle(battleID, battle)
@@ -563,11 +514,12 @@ end
 
 function BattleListWindow:AddBattle(battleID, battle)
 	battle = battle or lobby:GetBattle(battleID)
-	if not (Configuration.displayBadEngines2 or Configuration:IsValidEngineVersion(battle.engineVersion)) then
+
+	if not battle then
 		return
 	end
 
-	if not battle then
+	if not (Configuration.displayBadEngines2 or Configuration:IsValidEngineVersion(battle.engineVersion)) then
 		return
 	end
 

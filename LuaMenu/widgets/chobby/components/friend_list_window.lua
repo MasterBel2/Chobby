@@ -40,6 +40,11 @@ function FriendListWindow:init(parent)
 	lobby:AddListener("OnFriendRequest",     function(listener, ...) self:OnFriendRequest(...) end)
 	lobby:AddListener("OnFriendRequestList", function(listener, ...) self:OnFriendRequestList(...) end)
 	lobby:AddListener("OnAccepted",          function(listener, ...) self:OnAccepted(...) end)
+
+	self.noItemsInFilterText = "Everything's been filtered out!"
+	self.noItemsToShowText = "There is nothing here. You are alone :("
+
+	self:FullUpdate()
 end
 
 function FriendListWindow:OnAddUser(userName)
@@ -140,6 +145,9 @@ function FriendListWindow:OnFriendList(friends)
 	for _, userName in pairs(friends) do
 		self:AddFriend(userName)
 	end
+	Spring.Echo("Friend count:")
+	Spring.Echo(#friends)
+	self:UpdatePresentation()
 end
 
 function FriendListWindow:OnFriendRequest(userName)
@@ -160,12 +168,19 @@ function FriendListWindow:OnFriendRequestList(friendRequests)
 	for _, userName in pairs(friendRequests) do
 		self:AddFriendRequest(userName)
 	end
+	Spring.Echo("Friend request count:")
+	Spring.Echo(#friendRequests)
+	self:UpdatePresentation()
 end
 
 function FriendListWindow:OnAccepted(listener)
-	self:Clear()
+	self:FullUpdate()
+end
+
+function FriendListWindow:UpdateData()
 	lobby:FriendList()
 	lobby:FriendRequestList()
+	Spring.Echo("Requesting new FriendListWindow data")
 end
 
 function FriendListWindow:RemoveListeners()

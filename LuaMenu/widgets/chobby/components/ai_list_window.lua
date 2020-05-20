@@ -14,11 +14,15 @@ function AiListWindow:init(gameName)
 	local oldAiVersions = (not Configuration.showOldAiVersions) and Configuration.gameConfig.oldAiVersions
 	local isRunning64Bit = Configuration:GetIsRunning64Bit()
 
+	self:FullUpdate()
+end
+
+function AiListWindow:UpdateData()
 	for i, ai in pairs(ais) do
 		self:AddAiToList(ai, blackList, oldAiVersions, isRunning64Bit)
 	end
-
 end
+
 function AiListWindow:CompareItems(id1, id2)
 	local order = Configuration.simpleAiList and Configuration.gameConfig.simpleAiOrder
 	if order then

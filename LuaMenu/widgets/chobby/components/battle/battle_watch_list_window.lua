@@ -13,7 +13,7 @@ function BattleWatchListWindow:init(parent)
 	self.itemHeight = 80
 	self.itemPadding = 1
 
-	local update = function() self:Update() end
+	local update = function() self:FullUpdate() end
 
 	self.onBattleOpened = function(listener, battleID)
 		self:AddBattle(battleID, lobby:GetBattle(battleID))
@@ -76,9 +76,7 @@ function BattleWatchListWindow:RemoveListeners()
 	lobby:RemoveListener("OnUpdateBattleInfo", self.onUpdateBattleInfo)
 end
 
-function BattleWatchListWindow:Update()
-	self:Clear()
-
+function BattleWatchListWindow:UpdateData()
 	local battles = lobby:GetBattles()
 	Spring.Echo("Number of battles: " .. lobby:GetBattleCount())
 	local tmp = {}

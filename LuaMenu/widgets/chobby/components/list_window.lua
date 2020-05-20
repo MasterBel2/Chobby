@@ -76,6 +76,29 @@ function ListWindow:init(parent, title, noWindow, windowClassname, noClose, cust
 	}
 	self.scrollChildren = 0
 
+	self.infoPanel = Panel:New {
+		classname = "overlay_window",
+		x = "15%",
+		y = "45%",
+		right = "15%",
+		bottom = "45%",
+		parent = self.window,
+	}
+	self.infoLabel = Label:New {
+		x = "5%",
+		y = "5%",
+		width = "90%",
+		height = "90%",
+		align = "center",
+		valign = "center",
+		parent = self.infoPanel,
+		font = Configuration:GetFont(3),
+	}
+	self:HideInfoPanel()
+
+	self.noItemsInFilterText = "Everything's been filtered out!"
+	self.noItemsToShowText = "Nothing to see here."
+
 	self.columns = 1
 	self.itemHeight = 60
 	self.itemPadding = 2
@@ -219,6 +242,21 @@ function ListWindow:ItemInFilter(id)
 	return true
 end
 
+function ListWindow:FullUpdate()
+	self:Clear()
+	self:UpdateData()
+	self:UpdatePresentation()
+end
+
+function ListWindow:UpdateData()
+	-- To  be overridden by subclasses.
+end
+
+function ListWindow:UpdatePresentation()
+	self:UpdateFilters()
+	self:UpdateInfoPanel()
+end
+
 function ListWindow:UpdateFilters()
 	for i = 1, self.scrollChildren do
 		self.orderPanelMapping[i].inFilter = self:ItemInFilter(self.orderPanelMapping[i].id)
@@ -226,6 +264,30 @@ function ListWindow:UpdateFilters()
 	for id, _ in pairs(self.itemPanelMapping) do
 		self:RecalculateOrder(id)
 	end
+end
+
+function ListWindow:UpdateInfoPanel()
+	local firstPanel = self.orderPanelMapping[1]
+	if firstPanel then
+		if firstPanel.inFilter then
+			self:HideInfoPanel()
+		else
+			-- If first panel is filtered out, all panels are.
+			self:ShowInfoPanel(self.noItemsInFilterText)
+		end
+	else
+		self:ShowInfoPanel(self.noItemsToShowText)
+	end
+end
+
+-- Displays the info panel with a caption.
+function ListWindow:ShowInfoPanel(caption)
+	self.infoPanel:SetVisibility(true)
+	self.infoPanel:BringToFront()
+	self.infoLabel:SetCaption(caption)
+end
+function ListWindow:HideInfoPanel()
+	self.infoPanel:SetVisibility(false)
 end
 
 function ListWindow:SwapPlaces(panel1, panel2)
